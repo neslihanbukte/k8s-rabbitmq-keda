@@ -1,0 +1,21 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: rabbitmq-scaledobject
+  namespace: default  
+spec:
+  scaleTargetRef:
+    name: flask-app
+  minReplicaCount: 1
+  maxReplicaCount: 5           
+  cooldownPeriod: 30
+  pollingInterval: 15
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: test_queue
+        mode: QueueLength
+        value: '5'
+        hostFromEnv: host
+      authenticationRef:
+        name: rabbitmq-auth
