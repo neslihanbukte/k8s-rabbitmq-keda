@@ -1,1 +1,39 @@
-name: ci/cd pipeline 
+name: Deploy to Minikube
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: neslihanbukte/keda-flask-rabbitmq-app
+  KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
+  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Log in to Docker Hub
+      run: echo "${{ env.DOCKERHUB_TOKEN }}" | docker login -u ${{ env.DOCKERHUB_USERNAME }} --password-stdin
+
+    - name: Build Docker image
+      run: docker build -t $IMAGE_NAME:latest .
+
+    - name: Push image to Docker Hub
+      run: docker push $IMAGE_NAME:latest
+
+    - name: Set up kubeconfig
+      run: |
+        echo "${KUBE_CONFIG_DATA}" | base64 --decode > $HOME/.kube/config
+        export KUBECONFIG=$HOME/.kube/config
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/
+        kubectl rollout status deployment flask-app
